@@ -1,0 +1,19 @@
+# Build / CMake / Pico
+firmware/build/
+**/CMakeFiles/
+**/cmake_install.cmake
+**/CMakeCache.txt
+**/Makefile
+**/*.ninja
+**/.ninja_*
+**/compile_commands.json
+
+# Toolchain / IDE locale
+.pico_sdk_path
+.picotool_serial
+.fw_memory_snapshot.json
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo

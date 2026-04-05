@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Firmware: build and flash",
+      "type": "shell",
+      "command": "./build_and_flash.sh",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware",
+        "env": {}
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Firmware: build only (no flash)",
+      "type": "shell",
+      "command": "./build_and_flash.sh --no-flash",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

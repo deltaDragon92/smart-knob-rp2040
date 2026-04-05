@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pico: build & flash",
+      "type": "lldb",
+      "request": "launch",
+      "program": "/bin/bash",
+      "args": ["./build_and_flash.sh"],
+      "cwd": "${workspaceFolder}/firmware",
+      "terminal": "integrated"
+    }
+  ]
+}
