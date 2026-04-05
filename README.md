@@ -1,87 +1,90 @@
 # smart-knob-rp2040
 
-Firmware per **Raspberry Pi Pico** (RP2040) con display rotondo **GC9A01** 240×240, **LVGL 8.3** e interfaccia generata da **SquareLine Studio** (`firmware/ui/`).
+RP2040 firmware for a round **GC9A01** 240×240 display, **LVGL 8.3**, and a **SquareLine** UI in `firmware/ui/`.
 
-## Cosa fa il codice
+## First-time setup (after clone)
 
-| Parte | Ruolo |
-|--------|--------|
-| **`firmware/main.cpp`** | Avvio: `stdio` USB, init hardware display (`gc9a01_hw_init`), LVGL (`lv_init`, `gc9a01_lvgl_port_init`), UI SquareLine (`ui_init`), loop con `lv_tick_inc` / `lv_timer_handler` ogni 5 ms. |
-| **`firmware/gc9a01_spi.c`** | Driver SPI per GC9A01, sequenza di init allineata al riferimento round TFT / HAL, integrazione con il flush LVGL. |
-| **`firmware/board_pins.h`** | Pin SPI0, CS/DC/RST/BL, polarità DC, baud SPI, righe buffer LVGL, `MADCTL` e altre macro di tuning colore/orientamento. |
-| **`firmware/lv_conf.h`** | Configurazione LVGL per questo target. |
-| **`firmware/ui/`** | File esportati da SquareLine (`.c`/`.h`); la libreria CMake `ui` è definita nel **`firmware/CMakeLists.txt`** principale (vedi sotto). |
-| **`firmware/build_and_flash.sh`** | Trova Pico SDK e toolchain ARM, configura CMake, compila, genera `display.uf2`, flash con **picotool** (o copia UF2 su volume **RPI-RP2** in fallback). |
-| **`firmware/scripts/fw_memory_report.py`** | Dopo la build (e dopo flash riuscito) può mostrare un riepilogo memoria flash/RAM dall’ELF. |
+You do **not** need to clone LVGL manually. CMake downloads LVGL **v8.3.11** on the first configure (needs **Git** and **internet**).
 
-**CMake:** LVGL viene scaricato con `FetchContent` alla prima configurazione (serve rete). Il target eseguibile si chiama **`display`**; output: `firmware/build/display.uf2` (e `.elf`).
+1. **Clone this repo**
+   ```bash
+   git clone https://github.com/deltaDragon92/smart-knob-rp2040.git
+   cd smart-knob-rp2040
+   ```
 
-**Nota SquareLine:** il `CMakeLists.txt` che SquareLine può mettere in `ui/` **non** viene usato come `add_subdirectory`. Tutti i `ui/**/*.c` sono raccolti dal `CMakeLists.txt` in radice `firmware/`, così puoi ri-esportare l’UI senza rompere la build. Dettagli in `firmware/ui/SQUARELINE_EXPORT_README.txt`.
+2. **Install build tools**
+   - **CMake** ≥ 3.20, **Ninja** (recommended), **Git**, **Python 3** (optional, for the memory report script)
+   - **macOS (Homebrew):** `brew install cmake ninja git python3`
+   - **Linux (Debian/Ubuntu):** `sudo apt install cmake ninja-build git python3 build-essential`
 
-## Hardware (default)
+3. **Install the Raspberry Pi Pico SDK**  
+   Follow the [official Getting started](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) or clone [pico-sdk](https://github.com/raspberrypi/pico-sdk) and set:
+   ```bash
+   export PICO_SDK_PATH=/path/to/pico-sdk
+   ```
+   Alternatively put that path on one line in `firmware/.pico_sdk_path` (gitignored), or install the SDK under `~/.pico-sdk/sdk/<version>` so the build script can find it.
 
-Connessione consigliata su **SPI0** (Pico):
+4. **Install a full ARM GNU toolchain** (not “compiler only”)  
+   You need `arm-none-eabi-gcc` **and** newlib headers (`arm-none-eabi/include/stdint.h`, etc.).
+   - **macOS:** the Homebrew `arm-none-eabi-gcc` formula is often incomplete for Pico + LVGL. Prefer the [ARM GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) tarball or `brew install --cask gcc-arm-embedded`, then:
+     ```bash
+     export PICO_TOOLCHAIN_PATH=/path/to/toolchain/prefix
+     ```
+     Or one line in `firmware/.pico_toolchain_path` (gitignored).
 
-| Segnale | GPIO (default) |
-|---------|----------------|
+5. **picotool** (USB flash)  
+   Build or install **picotool** from the Pico SDK and ensure it is on `PATH`, or rely on **UF2**: copy `firmware/build/display.uf2` to the **RPI-RP2** drive after BOOTSEL.
+
+6. **Build (first run downloads LVGL)**
+   ```bash
+   cd firmware
+   ./build_and_flash.sh --no-flash
+   ```
+   Fix any errors from the script (SDK path, toolchain). When it succeeds, `firmware/build/display.uf2` is ready.
+
+7. **Flash the Pico**  
+   Connect the board with a **data** USB cable, then:
+   ```bash
+   ./build_and_flash.sh
+   ```
+   Or use BOOTSEL + copy the UF2 file manually.
+
+## What’s in the firmware
+
+- **`main.cpp`** — init USB stdio, display, LVGL, SquareLine `ui_init()`, main LVGL tick loop.
+- **`gc9a01_spi.c`** — GC9A01 over SPI, LVGL flush.
+- **`board_pins.h`** — wiring and display tuning (SPI pins, DC polarity, buffer size, etc.).
+- **`lv_conf.h`** — LVGL config.
+- **`firmware/ui/`** — SquareLine export. The root **`firmware/CMakeLists.txt`** collects all `ui/**/*.c`; the `ui/CMakeLists.txt` from SquareLine is **ignored** so re-exports do not break the build (see `firmware/ui/SQUARELINE_EXPORT_README.txt`).
+- **`build_and_flash.sh`** — configure, build, flash (picotool or UF2 fallback). Run `./build_and_flash.sh --help` for options.
+
+## Default wiring (SPI0)
+
+| Signal | GPIO |
+|--------|------|
 | SCK | 18 |
 | MOSI | 19 |
-| MISO | 16 (spesso non collegato al display) |
 | CS | 22 |
 | DC | 21 |
 | RST | 20 |
 | Backlight | 17 |
 
-Modifica i define in **`firmware/board_pins.h`** se il tuo breakout usa altri pin o polarità DC/backlight.
+Change pins in **`firmware/board_pins.h`** if your module differs.
 
-## Prerequisiti
+## VS Code / Cursor
 
-- **CMake** ≥ 3.20, **Ninja** (consigliato) o Make
-- **Pico SDK** — imposta `PICO_SDK_PATH` oppure crea `firmware/.pico_sdk_path` con il percorso su una riga, oppure installa sotto `~/.pico-sdk/sdk/...`
-- **Toolchain ARM GNU** completo (`arm-none-eabi-gcc` **e** newlib in `arm-none-eabi/include/`). Su macOS spesso non basta solo il pacchetto Homebrew “gcc-only”; vedi i messaggi di `build_and_flash.sh` per suggerimenti
-- **picotool** (dal Pico SDK o su `PATH`) per flash via USB; in alternativa modalità UF2 manuale
-- Prima configurazione: **Git** e rete per clonare LVGL
+- **Build:** `Cmd+Shift+B` (default task) runs `./build_and_flash.sh` from `firmware/`.
+- **Run and Debug:** choose **“Pico: build & flash”** (runs the same script in the integrated terminal).
 
-## Build e flash da terminale
-
-Dalla cartella `firmware/`:
-
-```bash
-./build_and_flash.sh              # configure (se serve), build, flash
-./build_and_flash.sh --no-flash   # solo build
-./build_and_flash.sh --flash-only # solo flash (UF2 già presente)
-./build_and_flash.sh --copy-ui    # copia ui/*.c e ui/*.h “flat” nella radice firmware (opzionale), poi build+flash
-```
-
-Variabili utili (estratti): `PICO_BOARD`, `BUILD_DIR`, `PICOTOOL`, `PICOTOOL_SER` o file `firmware/.picotool_serial`, `FLASH_UF2_PATH`, ecc. — vedi commenti in cima a `build_and_flash.sh`.
-
-## Cursor / VS Code
-
-- **Task predefinita Build** (`Cmd+Shift+B`): esegue `Firmware: build and flash` → `./build_and_flash.sh` da `firmware/`.
-- **Esegui e debug**: configurazione **“Pico: build & flash”** (avvia uno script Node che lancia lo stesso comando nel terminale integrato).
-- **CMake Tools:** in `.vscode/settings.json` è impostato `cmake.configureOnOpen: false` e la sorgente CMake è `firmware/`, per evitare richieste di kit all’apertura se usi solo lo script.
-
-Estensione consigliata: CodeLLDB (per debug nativo in futuro); per build/flash non è obbligatoria.
-
-## Struttura repository
+## Layout
 
 ```
-firmware/
-  CMakeLists.txt      # progetto Pico + LVGL + libreria ui
-  main.cpp
-  gc9a01_spi.c/.h
-  board_pins.h
-  lv_conf.h
-  pico_sdk_import.cmake
-  build_and_flash.sh
-  ui/                 # export SquareLine
-  scripts/            # fw_memory_report.py
-.vscode/              # tasks, launch, settings
-LICENSE
+firmware/   CMake project, sources, ui/, build_and_flash.sh
+.vscode/    tasks and launch configs
 ```
 
-La cartella `firmware/build/` è in `.gitignore` (artifact di build e `_deps` LVGL).
+`firmware/build/` is gitignored (includes CMake `lvgl` fetch under `_deps/`).
 
-## Licenza
+## License
 
-Vedi [LICENSE](LICENSE) (MIT).
+[MIT](LICENSE)
