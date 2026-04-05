@@ -1,14 +1,15 @@
 {
   "version": "0.2.0",
   "configurations": [
+    
     {
       "name": "Pico: build & flash",
-      "type": "lldb",
+      "type": "node",
       "request": "launch",
-      "program": "/bin/bash",
-      "args": ["./build_and_flash.sh"],
-      "cwd": "${workspaceFolder}/firmware",
-      "terminal": "integrated"
+      "program": "${workspaceFolder}/.vscode/run-build-flash.cjs",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }
